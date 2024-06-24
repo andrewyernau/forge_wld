@@ -1,0 +1,9 @@
+{
+  "quetzal_sound_1": {
+    "subtitles": "sounds.feel_the_wild.quetzal_idle",
+    "sounds": [
+      "feel_the_wild:quetzal_sound_1"
+
+    ]
+  }
+}

@@ -1,8 +1,10 @@
-package net.andrewyernau.wildlifemod;
+package net.andrewyernau.feel_the_wild;
 
 import com.mojang.logging.LogUtils;
-import net.andrewyernau.wildlifemod.entity.ModEntities;
-import net.andrewyernau.wildlifemod.entity.client.QuetzalRenderer;
+import net.andrewyernau.feel_the_wild.entity.ModEntities;
+import net.andrewyernau.feel_the_wild.entity.api.CustomSensors;
+import net.andrewyernau.feel_the_wild.entity.client.QuetzalRenderer;
+import net.andrewyernau.feel_the_wild.sound.ModSounds;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -17,28 +19,31 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // The value here should match an entry in the META-INF/mods.toml file
-@Mod(WildLifeDelights.MOD_ID)
-public class WildLifeDelights
-{
-    public static final String MOD_ID = "wildlife_delights_a_gastronomic_journey";
+@Mod(TheWild.MOD_ID)
+public class TheWild {
+    public static final String MOD_ID = "feel_the_wild";
 
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    public WildLifeDelights(){
+    public TheWild() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         modEventBus.addListener(this::commonSetup);
+        //EntityRegistry.DEF_REG.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::addCreative);
 
         ModEntities.register(modEventBus);
+        ModSounds.register(modEventBus);
+
+        CustomSensors.SENSORS.register(modEventBus);
     }
 
-    private void commonSetup(final FMLCommonSetupEvent event)
-    {
+    private void commonSetup(final FMLCommonSetupEvent event) {
     }
 
     // Add the example block item to the building blocks tab
@@ -56,8 +61,7 @@ public class WildLifeDelights
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
-        public static void onClientSetup(FMLClientSetupEvent event)
-        {
+        public static void onClientSetup(FMLClientSetupEvent event) {
             EntityRenderers.register(ModEntities.QUETZAL.get(), QuetzalRenderer::new);
         }
     }
