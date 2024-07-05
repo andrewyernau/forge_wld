@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.andrewyernau.feel_the_wild.entity.animations.ModAnimationDefinitions;
 
+import net.andrewyernau.feel_the_wild.entity.custom.QuetzalEntity;
 import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -73,8 +74,8 @@ public class QuetzalModel<T extends Entity> extends HierarchicalModel<T> {
         this.applyHeadRotation(netHeadYaw, headPitch, ageInTicks);
 
         this.animateWalk(ModAnimationDefinitions.QUETZAL_WALK, limbSwing, limbSwingAmount, 2f, 2.5f);
-        //this.animate(((QuetzalEntity)entity).idleAnimationState, ModAnimationDefinitions.QUETZAL_IDLE,ageInTicks,1f);
-        //this.animate(((QuetzalEntity)entity).flyingAnimationState, ModAnimationDefinitions.QUETZAL_FLYFLAPPING,ageInTicks,1f);
+        this.animate(((QuetzalEntity)entity).idleAnimationState, ModAnimationDefinitions.QUETZAL_IDLE,ageInTicks,1f);
+        this.animate(((QuetzalEntity)entity).flyingAnimationState, ModAnimationDefinitions.QUETZAL_FLYFLAPPING,ageInTicks,1f);
 
     }
 

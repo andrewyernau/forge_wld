@@ -1,12 +1,8 @@
 package net.andrewyernau.feel_the_wild.entity.custom;
 
 import com.google.common.collect.Sets;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-
-import net.andrewyernau.feel_the_wild.entity.api.CustomMemoryTypes;
-import net.andrewyernau.feel_the_wild.entity.api.behaviours.SleepDuringNight;
-import net.andrewyernau.feel_the_wild.entity.api.sensors.NightTimeSensor;
-import net.andrewyernau.feel_the_wild.entity.base.BaseAnimal;
+import net.andrewyernau.feel_the_wild.entity.ai.RandomFlyingGoal;
+import net.andrewyernau.feel_the_wild.entity.base.BaseFlyingAnimal;
 import net.andrewyernau.feel_the_wild.sound.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -17,36 +13,19 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.ai.Brain;
-
 
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.tslat.smartbrainlib.api.SmartBrainOwner;
-import net.tslat.smartbrainlib.api.core.BrainActivityGroup;
-import net.tslat.smartbrainlib.api.core.SmartBrainProvider;
-import net.tslat.smartbrainlib.api.core.behaviour.FirstApplicableBehaviour;
-import net.tslat.smartbrainlib.api.core.behaviour.OneRandomBehaviour;
-
-import net.tslat.smartbrainlib.api.core.behaviour.custom.look.LookAtTarget;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.misc.Idle;
-
-import net.tslat.smartbrainlib.api.core.behaviour.custom.move.MoveToWalkTarget;
-
-import net.tslat.smartbrainlib.api.core.behaviour.custom.path.SetRandomFlyingTarget;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.path.SetRandomWalkTarget;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.target.SetPlayerLookTarget;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.target.SetRandomLookTarget;
-import net.tslat.smartbrainlib.api.core.behaviour.custom.target.TargetOrRetaliate;
-import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor;
-import net.tslat.smartbrainlib.api.core.sensor.vanilla.InWaterSensor;
-import net.tslat.smartbrainlib.api.core.sensor.vanilla.NearbyLivingEntitySensor;
-import net.tslat.smartbrainlib.util.BrainUtils;
 import org.jetbrains.annotations.Nullable;
 
 
@@ -55,13 +34,23 @@ import java.util.List;
 import java.util.Set;
 
 
-public class QuetzalEntity extends BaseAnimal implements SmartBrainOwner<QuetzalEntity> {
+public class QuetzalEntity extends BaseFlyingAnimal {
 
     public static final EntityDataAccessor<Boolean> FLYING = SynchedEntityData.defineId(QuetzalEntity.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(QuetzalEntity.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Boolean> WALKING = SynchedEntityData.defineId(QuetzalEntity.class, EntityDataSerializers.BOOLEAN);
 
+    public final AnimationState idleAnimationState = new AnimationState();
+    public final AnimationState flyingAnimationState = new AnimationState();
+    public final AnimationState sleepingAnimationState = new AnimationState();
 
-    public QuetzalEntity(EntityType<? extends BaseAnimal> pEntityType, Level pLevel) {
+    private int idleAnimationTimeout = 0;
+
+    public QuetzalEntity(EntityType<? extends BaseFlyingAnimal> pEntityType, Level pLevel) {
         super(pEntityType, pLevel);
+        this.entityData.define(FLYING, true);
+        this.entityData.define(WALKING,false);
+        this.entityData.define(SLEEPING, false);
     }
 
     @Override
@@ -71,6 +60,18 @@ public class QuetzalEntity extends BaseAnimal implements SmartBrainOwner<Quetzal
 
     @Override
     protected void registerGoals() {
+        this.goalSelector.addGoal(0, new FloatGoal(this));
+
+        this.goalSelector.addGoal(1, new BreedGoal(this, 1.15D));
+        this.goalSelector.addGoal(2, new TemptGoal(this, 1.2D,Ingredient.of(Items.WHEAT_SEEDS,Items.BEETROOT_SEEDS), false));
+
+        this.goalSelector.addGoal(3, new FollowParentGoal(this, 1.1D));
+
+
+        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.1D));
+        this.goalSelector.addGoal(5, new RandomFlyingGoal(this,true));
+        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 3f));
+        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
     @Override
@@ -89,54 +90,15 @@ public class QuetzalEntity extends BaseAnimal implements SmartBrainOwner<Quetzal
     }
 
     @Override
-    protected Brain.Provider<?> brainProvider() {
-        return new SmartBrainProvider<>(this);
-    }
-
-    @Override
-    protected void customServerAiStep() {
-        tickBrain(this);
-    }
-
-    @Override
-    public List<ExtendedSensor<QuetzalEntity>> getSensors() {
-        return ObjectArrayList.of(
-                new NearbyLivingEntitySensor<QuetzalEntity>(),// This tracks nearby entities
-                new NightTimeSensor<QuetzalEntity>(),//This tracks the world time
-                new InWaterSensor<>()//This checks if mob is in water
-//                new HurtBySensor<>()             // This tracks the last damage source and attacker
-        );
-    }
-
-    @Override
-    public BrainActivityGroup<QuetzalEntity> getCoreTasks() { // These are the tasks that run all the time (usually)
-        return BrainActivityGroup.coreTasks(
-                new LookAtTarget<>(),                      // Have the entity turn to face and look at its current look target
-                new MoveToWalkTarget<>(),
-                new SleepDuringNight<>());                 // Walk towards the current walk target
-    }
-
-    @Override
-    public BrainActivityGroup<QuetzalEntity> getIdleTasks() { // These are the tasks that run when the mob isn't doing anything else (usually)
-        return BrainActivityGroup.idleTasks(
-                new FirstApplicableBehaviour<QuetzalEntity>(      // Run only one of the below behaviours, trying each one in order. Include the generic type because JavaC is silly
-                        new TargetOrRetaliate<>(),           // Set the attack target and walk target based on nearby entities
-                        new SetPlayerLookTarget<>(),          // Set the look target for the nearest player
-                        new SetRandomLookTarget<>()).startCondition(entity->!isSleeping(entity)),         // Set a random look target
-                new OneRandomBehaviour<>(                 // Run a random task from the below options
-                        new SetRandomWalkTarget<>().startCondition(entity->!isSleeping(entity)),    // Set a random walk target to a nearby position
-                        new SetRandomFlyingTarget<>().startCondition(entity->!isSleeping(entity)),// Set a random flight target to a nearby position
-                        new Idle<>().runFor(entity -> entity.getRandom().nextInt(30, 200)))); // Do nothing for 1.5->10 seconds
-    }
-
-
-    @Override
     public SoundEvent getAmbient(Level pLevel, RandomSource pRandom) {
-        if(!isSleeping(this))return ModSounds.QUETZAL_IDLE.get();
+        if(!isSleeping())return ModSounds.QUETZAL_IDLE.get();
         else return null;
     }
-    private boolean isSleeping(LivingEntity entity) {
-        return BrainUtils.hasMemory(entity, CustomMemoryTypes.NIGHTTIME);
+
+    @Override
+    public boolean isSleeping() {
+        return this.entityData.get(SLEEPING);
+//        return this.level().getDayTime()>=13000f;
     }
 
     @Nullable
@@ -179,9 +141,52 @@ public class QuetzalEntity extends BaseAnimal implements SmartBrainOwner<Quetzal
                 Items.PITCHER_POD
         });
     }
+
+    @Override
+    protected PathNavigation createNavigation(Level pLevel) {
+        return new FlyingPathNavigation(this,pLevel);
+    }
+
+    @Override
+    public void aiStep() {
+        super.aiStep();
+    }
+    @Override
+    public void tick() {
+        super.tick();
+
+        if(this.level().isClientSide()) {
+            setupAnimationStates();
+        }
+    }
+    public void setupAnimationStates(){
+        if(this.idleAnimationTimeout <= 0) {
+            this.idleAnimationTimeout = this.random.nextInt(40) + 80;
+            this.idleAnimationState.start(this.tickCount);
+        } else {
+            --this.idleAnimationTimeout;
+        }
+    }
+
+    @Override
+    protected void updateWalkAnimation(float pPartialTick) {
+        float f;
+        if(this.getPose() == Pose.STANDING) {
+            f = Math.min(pPartialTick * 6F, 1f);
+        } else {
+            f = 0f;
+        }
+        this.walkAnimation.update(f, 0.2f);
+    }
+
     @Override
     public boolean isFlying(){
         return this.entityData.get(FLYING);
     }
+
+    public void setFlying(){
+        this.entityData.set(FLYING,true);
+    }
+
 }
 

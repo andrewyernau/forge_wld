@@ -2,7 +2,6 @@ package net.andrewyernau.feel_the_wild;
 
 import com.mojang.logging.LogUtils;
 import net.andrewyernau.feel_the_wild.entity.ModEntities;
-import net.andrewyernau.feel_the_wild.entity.api.CustomSensors;
 import net.andrewyernau.feel_the_wild.entity.client.QuetzalRenderer;
 import net.andrewyernau.feel_the_wild.sound.ModSounds;
 import net.minecraft.client.renderer.entity.EntityRenderers;
@@ -40,7 +39,7 @@ public class TheWild {
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
 
-        CustomSensors.SENSORS.register(modEventBus);
+
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

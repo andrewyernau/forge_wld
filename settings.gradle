@@ -6,10 +6,10 @@ pluginManagement {
             url = 'https://maven.minecraftforge.net/'
         }
         maven{ url='https://maven.parchmentmc.org';}
-        maven {
-            name = "SmartBrainLib (SBL) Maven Repo"
-            url = "https://dl.cloudsmith.io/public/tslat/sbl/maven/"
-        }
+       // maven {
+        //    name = "SmartBrainLib (SBL) Maven Repo"
+       //     url = "https://dl.cloudsmith.io/public/tslat/sbl/maven/"
+       // }
     }
 }
 
